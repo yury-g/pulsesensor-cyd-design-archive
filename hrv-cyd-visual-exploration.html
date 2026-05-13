@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PulseSensor HRV on CYD - Visual Exploration</title>
+  <style>
+    :root {
+      --ink: #141316;
+      --paper: #f7f1e6;
+      --muted: #6d6a63;
+      --line: #d7cdbd;
+      --cyd: #f3c245;
+      --screen: #101214;
+      --cyan: #39d9d7;
+      --pink: #ff5d8f;
+      --green: #9eed7f;
+      --amber: #ffcf5b;
+      --red: #ff705c;
+      --blue: #87a7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+
+    .hero {
+      min-height: 78vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+      gap: 38px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 780px;
+      font-size: clamp(2.3rem, 8vw, 6.7rem);
+      line-height: .88;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: clamp(1.8rem, 4vw, 3.6rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .lead {
+      max-width: 680px;
+      margin-top: 22px;
+      font-size: clamp(1.05rem, 2vw, 1.45rem);
+    }
+
+    .device-wrap {
+      display: grid;
+      place-items: center;
+    }
+
+    .device {
+      width: min(100%, 420px);
+      aspect-ratio: 240 / 320;
+      padding: 24px 22px;
+      background: var(--cyd);
+      border: 2px solid #b98919;
+      border-radius: 8px;
+      box-shadow: 0 22px 50px rgba(35, 28, 10, .22);
+      position: relative;
+    }
+
+    .device::before,
+    .device::after {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #b98919;
+      border-radius: 50%;
+      top: 12px;
+      background: #e7b333;
+    }
+
+    .device::before { left: 12px; }
+    .device::after { right: 12px; }
+
+    .screen {
+      width: 100%;
+      height: 100%;
+      padding: 12px;
+      color: #f5f7f8;
+      background: var(--screen);
+      border: 6px solid #262a2f;
+      border-radius: 5px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+
+    .screen-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 10px;
+    }
+
+    .micro {
+      color: #9ca4ac;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .bpm {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      color: var(--pink);
+      font-size: clamp(44px, 10vw, 60px);
+      line-height: .82;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bpm span {
+      color: #8b939b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .metric {
+      padding: 7px 6px;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      background: #171b20;
+      min-width: 0;
+    }
+
+    .metric strong {
+      display: block;
+      color: #f8fafb;
+      font-size: 18px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric small {
+      display: block;
+      margin-top: 4px;
+      color: #97a0a8;
+      font-size: 9px;
+      line-height: 1.15;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .canvas-stack {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      min-height: 0;
+    }
+
+    .plot {
+      width: 100%;
+      height: 100%;
+      min-height: 64px;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      background: #0d0f11;
+    }
+
+    .screen-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .beat-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--pink);
+      box-shadow: 0 0 0 0 rgba(255,93,143,.65);
+      animation: thump 1s infinite;
+      flex: 0 0 auto;
+    }
+
+    @keyframes thump {
+      0%, 36%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,93,143,.55); }
+      10% { transform: scale(1.65); box-shadow: 0 0 0 8px rgba(255,93,143,0); }
+    }
+
+    section {
+      padding: 42px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .stage {
+      min-height: 168px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .stage svg {
+      width: 100%;
+      height: 72px;
+      overflow: visible;
+    }
+
+    .stage b {
+      font-size: .95rem;
+    }
+
+    .stage small {
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .mode {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+    }
+
+    .mini-screen {
+      aspect-ratio: 4 / 3;
+      padding: 9px;
+      color: white;
+      background: #101214;
+      border: 4px solid #282d33;
+      border-radius: 5px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 5px;
+      overflow: hidden;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mini-title {
+      display: flex;
+      justify-content: space-between;
+      color: #98a0a8;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .mini-value {
+      align-self: center;
+      color: var(--cyan);
+      font-size: clamp(28px, 5vw, 44px);
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .mini-value.pink { color: var(--pink); }
+    .mini-value.green { color: var(--green); }
+    .mini-value.amber { color: var(--amber); }
+
+    .bars {
+      display: grid;
+      gap: 5px;
+      align-self: center;
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 2px;
+      background: #2d343b;
+      overflow: hidden;
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--green);
+    }
+
+    .breath {
+      width: min(92px, 55%);
+      aspect-ratio: 1;
+      align-self: center;
+      justify-self: center;
+      border: 3px solid var(--cyan);
+      border-radius: 50%;
+      animation: breathe 5s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(.62); opacity: .65; }
+      50% { transform: scale(1); opacity: 1; }
+    }
+
+    .poincare {
+      width: 100%;
+      height: 100%;
+      align-self: center;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      background:
+        linear-gradient(#22272d 1px, transparent 1px),
+        linear-gradient(90deg, #22272d 1px, transparent 1px),
+        #0d0f11;
+      background-size: 20px 20px;
+      position: relative;
+    }
+
+    .poincare i {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--pink);
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .notes {
+      display: grid;
+      gap: 12px;
+    }
+
+    .note {
+      padding: 16px;
+      border-left: 4px solid var(--pink);
+      background: #fffaf0;
+    }
+
+    .note:nth-child(2) { border-color: var(--cyan); }
+    .note:nth-child(3) { border-color: var(--green); }
+
+    .note b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .formula {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #332c20;
+      overflow-x: auto;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .decision {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 20px;
+      }
+
+      .pipeline,
+      .modes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      main {
+        width: min(100vw - 22px, 440px);
+      }
+
+      .pipeline,
+      .modes {
+        grid-template-columns: 1fr;
+      }
+
+      .device {
+        padding: 18px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <h1>HRV is not a number from the pulse wave. It is the rhythm between beats.</h1>
+        <p class="lead">For a PulseSensor-on-CYD display, the valuable data is a stack: live waveform for trust, beat event for timing, IBI history for variability, then one or two slow-changing HRV summaries.</p>
+      </div>
+
+      <div class="device-wrap" aria-label="CYD display mockup">
+        <div class="device">
+          <div class="screen">
+            <div class="screen-top">
+              <div>
+                <div class="micro">PulseSensor live</div>
+                <div class="bpm"><output id="bpmOut">72</output><span>BPM</span></div>
+              </div>
+              <div class="beat-dot" aria-hidden="true"></div>
+            </div>
+            <div class="canvas-stack">
+              <canvas id="waveCanvas" class="plot" width="360" height="94" aria-label="Raw pulse waveform"></canvas>
+              <canvas id="ibiCanvas" class="plot" width="360" height="94" aria-label="IBI trend"></canvas>
+            </div>
+            <div class="metric-row">
+              <div class="metric"><strong><output id="ibiOut">833</output></strong><small>IBI ms</small></div>
+              <div class="metric"><strong><output id="rmssdOut">42</output></strong><small>RMSSD</small></div>
+              <div class="metric"><strong><output id="qualOut">92</output>%</strong><small>Signal</small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Measurement Pipeline</h2>
+      <p>Keep the mental model explicit on the display: raw light reading becomes a detected beat; beat-to-beat intervals become HRV. The CYD should show just enough of each layer that the user can tell whether the HRV number is believable.</p>
+      <div class="pipeline">
+        <article class="stage">
+          <svg viewBox="0 0 160 80" role="img" aria-label="Raw PPG signal">
+            <polyline fill="none" stroke="#ff5d8f" stroke-width="5" points="0,58 18,55 28,12 38,56 58,58 76,54 88,18 99,57 118,58 140,54 152,24 160,58"/>
+          </svg>
+          <div><b>1. Sample</b><br><small>Read analog PPG around 500 Hz. This is your debug truth.</small></div>
+        </article>
+        <article class="stage">
+          <svg viewBox="0 0 160 80" role="img" aria-label="Beat threshold">
+            <line x1="0" y1="34" x2="160" y2="34" stroke="#d7cdbd" stroke-width="2"/>
+            <polyline fill="none" stroke="#39d9d7" stroke-width="5" points="0,60 25,57 39,18 53,59 77,60 105,56 121,16 136,58 160,60"/>
+            <circle cx="39" cy="18" r="6" fill="#ffcf5b"/><circle cx="121" cy="16" r="6" fill="#ffcf5b"/>
+          </svg>
+          <div><b>2. Detect</b><br><small>Threshold/adaptive detection marks the start of each pulse.</small></div>
+        </article>
+        <article class="stage">
+          <svg viewBox="0 0 160 80" role="img" aria-label="Inter-beat interval">
+            <line x1="28" y1="42" x2="126" y2="42" stroke="#87a7ff" stroke-width="5"/>
+            <circle cx="28" cy="42" r="8" fill="#ff5d8f"/><circle cx="126" cy="42" r="8" fill="#ff5d8f"/>
+            <text x="48" y="30" fill="#6d6a63" font-size="18" font-family="monospace">842 ms</text>
+          </svg>
+          <div><b>3. Time</b><br><small>IBI is the milliseconds between consecutive beats.</small></div>
+        </article>
+        <article class="stage">
+          <svg viewBox="0 0 160 80" role="img" aria-label="IBI history">
+            <polyline fill="none" stroke="#9eed7f" stroke-width="5" points="0,42 20,37 40,51 60,31 80,47 100,26 120,44 140,34 160,46"/>
+          </svg>
+          <div><b>4. Window</b><br><small>Store 30-120 clean IBIs. Reject dropouts before summarizing.</small></div>
+        </article>
+        <article class="stage">
+          <svg viewBox="0 0 160 80" role="img" aria-label="HRV score">
+            <rect x="12" y="48" width="28" height="18" fill="#ff705c"/>
+            <rect x="52" y="34" width="28" height="32" fill="#ffcf5b"/>
+            <rect x="92" y="18" width="28" height="48" fill="#9eed7f"/>
+            <text x="54" y="13" fill="#141316" font-size="13" font-family="monospace">RMSSD</text>
+          </svg>
+          <div><b>5. Track</b><br><small>Show RMSSD/SDNN trends, not medical conclusions.</small></div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Four CYD Screens Worth Prototyping</h2>
+      <p>The CYD is small enough that each screen should answer one question. Touch can rotate between these views or pin one as the default.</p>
+      <div class="modes">
+        <article class="mode">
+          <div class="mini-screen">
+            <div class="mini-title"><span>Now</span><span>good</span></div>
+            <div class="mini-value pink">72</div>
+            <canvas class="spark" width="220" height="58" data-color="#ff5d8f"></canvas>
+          </div>
+          <h3>Live Trust</h3>
+          <p>Big BPM, tiny waveform, IBI, and signal quality. This is the default “is it reading me?” screen.</p>
+        </article>
+        <article class="mode">
+          <div class="mini-screen">
+            <div class="mini-title"><span>HRV</span><span>60 beats</span></div>
+            <div class="bars">
+              <div class="bar"><i style="width:42%"></i></div>
+              <div class="bar"><i style="width:68%; background:#39d9d7"></i></div>
+              <div class="bar"><i style="width:55%; background:#ffcf5b"></i></div>
+            </div>
+            <div class="mini-title"><span>RMSSD 42</span><span>SDNN 51</span></div>
+          </div>
+          <h3>Trend</h3>
+          <p>Slow metrics from clean IBI windows. Useful for sessions, recovery experiments, and baseline comparison.</p>
+        </article>
+        <article class="mode">
+          <div class="mini-screen">
+            <div class="mini-title"><span>Breathe</span><span>6/min</span></div>
+            <div class="breath" aria-hidden="true"></div>
+            <div class="mini-title"><span>inhale</span><span>exhale</span></div>
+          </div>
+          <h3>Biofeedback</h3>
+          <p>Pair a breath pacer with IBI wave amplitude. This makes HRV feel controllable, not abstract.</p>
+        </article>
+        <article class="mode">
+          <div class="mini-screen">
+            <div class="mini-title"><span>Poincare</span><span>IBI n/n-1</span></div>
+            <div class="poincare" id="poincare"></div>
+            <div class="mini-title"><span>oval = rhythmic</span><span>touch reset</span></div>
+          </div>
+          <h3>Shape</h3>
+          <p>A point cloud of consecutive IBIs. Great for exploration, but secondary to trend and trust screens.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="decision">
+      <div>
+        <h2>Best First Build</h2>
+        <p>Build one “session” screen that layers trust plus HRV. Make the main number BPM, because people understand it instantly. Make RMSSD the secondary number, because it is easy to compute from short-term IBI differences and responds to breathing. Make signal quality impossible to miss.</p>
+      </div>
+      <div class="notes">
+        <div class="note"><b>Show raw signal continuously.</b><p>If the waveform is noisy, the HRV metric should visually lose confidence instead of pretending to be precise.</p></div>
+        <div class="note"><b>Use IBI windows.</b><p>Track a rolling buffer of clean intervals. Compute HRV only after enough accepted beats, then update slowly.</p></div>
+        <div class="note"><b>Store sessions, not every sample.</b><p>MicroSD can keep timestamped summaries: duration, average BPM, RMSSD, SDNN, rejected beat count, and notes.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Useful Computations</h2>
+      <div class="formula">
+        IBI[n] = beatTime[n] - beatTime[n-1]<br>
+        BPM_instant = 60000 / IBI[n]<br>
+        RMSSD = sqrt(mean((IBI[n] - IBI[n-1])^2))<br>
+        SDNN = standardDeviation(IBI window)<br>
+        signalQuality = stable amplitude + plausible IBI + low dropout count
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const waveCanvas = document.getElementById('waveCanvas');
+    const ibiCanvas = document.getElementById('ibiCanvas');
+    const bpmOut = document.getElementById('bpmOut');
+    const ibiOut = document.getElementById('ibiOut');
+    const rmssdOut = document.getElementById('rmssdOut');
+    const qualOut = document.getElementById('qualOut');
+    const wave = Array.from({ length: 110 }, () => .5);
+    const ibi = Array.from({ length: 68 }, (_, i) => 835 + Math.sin(i / 3.2) * 48 + Math.sin(i / 1.7) * 18);
+    let t = 0;
+    let lastBeatBucket = 0;
+
+    function drawGrid(ctx, w, h) {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#0d0f11';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#20252a';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 24) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 18) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawLine(ctx, values, min, max, color) {
+      const { width: w, height: h } = ctx.canvas;
+      ctx.beginPath();
+      values.forEach((value, index) => {
+        const x = index / (values.length - 1) * w;
+        const y = h - ((value - min) / (max - min)) * h;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    function pulseShape(x) {
+      const beat = x % 1;
+      const systolic = Math.exp(-Math.pow((beat - .15) / .045, 2));
+      const rebound = .3 * Math.exp(-Math.pow((beat - .32) / .07, 2));
+      return .25 + systolic * .65 + rebound;
+    }
+
+    function tick() {
+      t += .018;
+      const breath = Math.sin(t / 3.8);
+      const nextWave = pulseShape(t * 1.15) + Math.sin(t * 4.2) * .015;
+      wave.push(Math.min(1, nextWave));
+      wave.shift();
+
+      const beatBucket = Math.floor(t * 1.15);
+      if (beatBucket !== lastBeatBucket) {
+        lastBeatBucket = beatBucket;
+        const nextIbi = 835 + Math.sin(t / 2.4) * 54 + breath * 28 + Math.sin(t * 7.1) * 22;
+        ibi.push(nextIbi);
+        ibi.shift();
+        const recentIbi = ibi.slice(-32);
+        const diffs = recentIbi.slice(1).map((v, i) => v - recentIbi[i]);
+        const rmssd = Math.sqrt(diffs.reduce((sum, d) => sum + d * d, 0) / diffs.length);
+        ibiOut.value = Math.round(nextIbi);
+        bpmOut.value = Math.round(60000 / nextIbi);
+        rmssdOut.value = Math.round(rmssd);
+        qualOut.value = Math.round(90 + Math.sin(t / 5) * 5);
+      }
+
+      const waveCtx = waveCanvas.getContext('2d');
+      drawGrid(waveCtx, waveCanvas.width, waveCanvas.height);
+      drawLine(waveCtx, wave, 0, 1, '#ff5d8f');
+      waveCtx.fillStyle = '#9ca4ac';
+      waveCtx.font = '12px monospace';
+      waveCtx.fillText('raw PPG', 10, 18);
+
+      const ibiCtx = ibiCanvas.getContext('2d');
+      drawGrid(ibiCtx, ibiCanvas.width, ibiCanvas.height);
+      drawLine(ibiCtx, ibi, 720, 950, '#39d9d7');
+      ibiCtx.fillStyle = '#9ca4ac';
+      ibiCtx.font = '12px monospace';
+      ibiCtx.fillText('IBI rhythm', 10, 18);
+      requestAnimationFrame(tick);
+    }
+
+    document.querySelectorAll('.spark').forEach((canvas, idx) => {
+      const ctx = canvas.getContext('2d');
+      drawGrid(ctx, canvas.width, canvas.height);
+      const values = Array.from({ length: 70 }, (_, i) => .4 + pulseShape(i / 12 + idx) * .5);
+      drawLine(ctx, values, 0, 1, canvas.dataset.color);
+    });
+
+    const poincare = document.getElementById('poincare');
+    for (let i = 0; i < 52; i += 1) {
+      const dot = document.createElement('i');
+      const angle = i / 52 * Math.PI * 2;
+      const radius = 21 + Math.sin(i * 1.7) * 7;
+      const x = 50 + Math.cos(angle) * radius * 1.25 + Math.sin(i) * 2;
+      const y = 50 + Math.sin(angle) * radius * .72 + Math.cos(i * 1.2) * 2;
+      dot.style.left = `${x}%`;
+      dot.style.top = `${y}%`;
+      poincare.appendChild(dot);
+    }
+
+    tick();
+  </script>
+</body>
+</html>
