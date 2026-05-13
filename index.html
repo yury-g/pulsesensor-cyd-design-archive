@@ -913,6 +913,25 @@ if (pulseSensor.sawStartOfBeat()) {
           </div>
         </article>
 
+        <article class="demo-panel" id="quality-demo">
+          <div class="demo-layout">
+            <div class="demo-screen">
+              <div class="screen-landscape">
+                <div class="landscape-head"><span>SIGNAL QUALITY</span><span><output id="qualityMode">SEARCHING</output></span></div>
+                <canvas id="qualityCanvas" width="640" height="312" aria-label="Signal quality and BPM warm-up demo"></canvas>
+                <div class="landscape-foot"><span>qualified <output id="qualifiedCount">0</output>/10</span><span>quality <output id="qualityOut">00</output>/12</span></div>
+              </div>
+              <div class="caption">320 x 240 · Qualified beats and BPM warm-up</div>
+            </div>
+            <div class="demo-copy">
+              <h3>Signal Quality & BPM Warm-up</h3>
+              <p><span class="tag">Easy</span> Make the waiting period visible. The library may see candidate beats before your display should trust them.</p>
+              <p><strong>Qualification:</strong> Use BPM range, IBI range, and <code>getPulseAmplitude()</code>. Good beats raise quality; questionable beats fall away and do not enter the BPM window.</p>
+              <p><strong>Running BPM:</strong> Fill the 10-beat IBI window first. Then BPM is taught as <code>60000 / average(IBI)</code>, which matches how the Playground smooths recent beat timing.</p>
+            </div>
+          </div>
+        </article>
+
         <article class="demo-panel" id="tachogram-demo">
           <div class="demo-layout">
             <div class="demo-screen">
@@ -1102,7 +1121,13 @@ float calculateRmssd() {
       lastBeatBucket: 0,
       bpm: 72,
       amp: 88,
-      threshold: 560
+      threshold: 560,
+      quality: 0,
+      locked: false,
+      qualifiedIbis: [],
+      qualityEvents: [],
+      rejectedCount: 0,
+      rearmCount: 0
     };
 
     const els = {
@@ -1113,6 +1138,9 @@ float calculateRmssd() {
       ppgBpm: document.getElementById('ppgBpm'),
       ppgIbi: document.getElementById('ppgIbi'),
       ppgAmp: document.getElementById('ppgAmp'),
+      qualityMode: document.getElementById('qualityMode'),
+      qualifiedCount: document.getElementById('qualifiedCount'),
+      qualityOut: document.getElementById('qualityOut'),
       rmssdOut: document.getElementById('rmssdOut'),
       sdnnOut: document.getElementById('sdnnOut'),
       pnnOut: document.getElementById('pnnOut')
@@ -1122,6 +1150,7 @@ float calculateRmssd() {
       heroPpg: document.getElementById('heroPpg'),
       heroTacho: document.getElementById('heroTacho'),
       ppg: document.getElementById('ppgDemoCanvas'),
+      quality: document.getElementById('qualityCanvas'),
       tacho: document.getElementById('tachogramCanvas')
     };
 
@@ -1188,6 +1217,38 @@ float calculateRmssd() {
         if (Math.abs(values[i] - values[i - 1]) > 50) hits++;
       }
       return hits / (values.length - 1) * 100;
+    }
+
+    function isQualifiedBeat(bpm, ibi, amplitude) {
+      return bpm >= 40 && bpm <= 180 && ibi >= 333 && ibi <= 1500 && amplitude >= 20;
+    }
+
+    function updateQualityState(bpm, ibi, amplitude, detected) {
+      let qualified = false;
+      let reason = 'no beat';
+      if (detected) {
+        qualified = isQualifiedBeat(bpm, ibi, amplitude);
+        if (qualified) {
+          state.quality = Math.min(12, state.quality + 3);
+          state.qualifiedIbis.push(ibi);
+          if (state.qualifiedIbis.length > 10) state.qualifiedIbis.shift();
+          reason = 'counted';
+        } else {
+          state.quality = Math.max(0, state.quality - 1);
+          state.rejectedCount += 1;
+          reason = amplitude < 20 ? 'low amp' : 'out of range';
+        }
+      }
+
+      state.locked = state.quality >= 10 && state.qualifiedIbis.length >= 10;
+      state.qualityEvents.push({ qualified, reason, ibi, bpm, amplitude });
+      if (state.qualityEvents.length > 18) state.qualityEvents.shift();
+      return qualified;
+    }
+
+    function average(values) {
+      if (!values.length) return 0;
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
     }
 
     function drawPpgDemo() {
@@ -1340,6 +1401,92 @@ float calculateRmssd() {
       }
     }
 
+    function drawQualityDemo() {
+      const canvas = canvases.quality;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      drawGrid(ctx, w, h, 80, 78);
+
+      ctx.fillStyle = '#f6f5ef';
+      ctx.font = '800 18px ui-monospace, monospace';
+      ctx.fillText('candidate beats', 18, 30);
+      ctx.fillText('10-beat BPM window', 18, 164);
+
+      const startX = 20;
+      const eventY = 70;
+      const eventGap = 30;
+      state.qualityEvents.forEach((event, index) => {
+        const x = startX + index * eventGap;
+        ctx.strokeStyle = event.qualified ? '#7bd98d' : '#e44f55';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x, eventY - 24);
+        ctx.lineTo(x, eventY + 24);
+        ctx.stroke();
+        ctx.fillStyle = event.qualified ? '#7bd98d' : '#171819';
+        ctx.strokeStyle = event.qualified ? '#7bd98d' : '#e44f55';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, eventY, 9, 0, Math.PI * 2);
+        event.qualified ? ctx.fill() : ctx.stroke();
+      });
+
+      ctx.fillStyle = '#7bd98d';
+      ctx.fillText('counted', 22, 116);
+      ctx.fillStyle = '#e44f55';
+      ctx.fillText('rejected', 126, 116);
+      ctx.fillStyle = '#aeb4bd';
+      ctx.fillText(`R${state.rearmCount}`, w - 64, 116);
+
+      const meterX = 342;
+      const meterY = 142;
+      ctx.fillStyle = '#aeb4bd';
+      ctx.fillText('quality', meterX, 116);
+      for (let i = 0; i < 12; i++) {
+        const x = meterX + i * 20;
+        ctx.fillStyle = i < state.quality ? (i < 10 ? '#ffd05b' : '#62d8da') : '#303742';
+        ctx.fillRect(x, meterY, 13, 54);
+      }
+      ctx.strokeStyle = '#62d8da';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(meterX + 10 * 20 - 4, meterY - 7);
+      ctx.lineTo(meterX + 10 * 20 - 4, meterY + 64);
+      ctx.stroke();
+      ctx.fillStyle = '#62d8da';
+      ctx.font = '800 15px ui-monospace, monospace';
+      ctx.fillText('LOCK 10/12', meterX + 122, meterY - 10);
+
+      const slots = 10;
+      const slotX = 24;
+      const slotY = 190;
+      const slotW = 43;
+      for (let i = 0; i < slots; i++) {
+        const x = slotX + i * (slotW + 6);
+        const filled = i < state.qualifiedIbis.length;
+        ctx.fillStyle = filled ? '#252b32' : '#171819';
+        ctx.strokeStyle = filled ? '#7bd98d' : '#4a5663';
+        ctx.lineWidth = 2;
+        ctx.fillRect(x, slotY, slotW, 38);
+        ctx.strokeRect(x, slotY, slotW, 38);
+        ctx.fillStyle = filled ? '#f6f5ef' : '#6d7280';
+        ctx.font = '800 13px ui-monospace, monospace';
+        const label = filled ? String(Math.round(state.qualifiedIbis[i])) : '--';
+        ctx.fillText(label, x + 6, slotY + 24);
+      }
+
+      const avgIbi = average(state.qualifiedIbis);
+      const calcBpm = avgIbi ? Math.round(60000 / avgIbi) : 0;
+      ctx.fillStyle = state.locked ? '#7bd98d' : '#ffd05b';
+      ctx.font = '900 22px ui-monospace, monospace';
+      const status = state.locked ? `LOCKED ${calcBpm} BPM` : `BUILDING ${state.qualifiedIbis.length}/10`;
+      ctx.fillText(status, 24, h - 24);
+      ctx.fillStyle = '#aeb4bd';
+      ctx.font = '800 14px ui-monospace, monospace';
+      ctx.fillText('BPM = 60000 / avg(last 10 qualified IBI)', 250, h - 24);
+    }
+
     function drawHeroPlots() {
       drawMiniPpg(canvases.heroPpg);
 
@@ -1371,17 +1518,22 @@ float calculateRmssd() {
       if (beatBucket !== state.lastBeatBucket) {
         state.lastBeatBucket = beatBucket;
         const nextIbi = 838 + Math.sin(state.t / 4.2) * 66 + Math.sin(state.t * .82) * 35 + Math.sin(state.t * 2.1) * 9;
-        state.ibi.push(nextIbi);
-        state.ibi.shift();
         state.bpm = Math.round(60000 / nextIbi);
-        state.amp = Math.round(70 + wave * 35 + Math.sin(state.t) * 4);
+        const forceQuestionable = beatBucket % 9 === 2 || beatBucket % 13 === 6;
+        state.amp = Math.round(forceQuestionable ? 14 + Math.sin(state.t) * 3 : 70 + wave * 35 + Math.sin(state.t) * 4);
         const recent = state.ppg.slice(-28);
         const peakValue = Math.max(...recent);
         const peakOffset = recent.indexOf(peakValue);
+        const qualified = updateQualityState(state.bpm, nextIbi, state.amp, true);
+        if (qualified) {
+          state.ibi.push(nextIbi);
+          state.ibi.shift();
+        }
         state.beatEvents.push({
           index: state.ppg.length - recent.length + peakOffset,
           value: peakValue,
-          ibi: nextIbi
+          ibi: nextIbi,
+          qualified
         });
 
         const r = Math.round(rmssd(state.ibi));
@@ -1396,6 +1548,9 @@ float calculateRmssd() {
         els.ppgBpm.value = state.bpm;
         els.ppgIbi.value = ibi;
         els.ppgAmp.value = state.amp;
+        els.qualityMode.value = state.locked ? 'LOCKED' : 'SEARCHING';
+        els.qualifiedCount.value = Math.min(10, state.qualifiedIbis.length);
+        els.qualityOut.value = String(state.quality).padStart(2, '0');
         els.rmssdOut.value = r;
         els.sdnnOut.value = s;
         els.pnnOut.value = p;
@@ -1403,6 +1558,7 @@ float calculateRmssd() {
 
       drawHeroPlots();
       drawPpgDemo();
+      drawQualityDemo();
       drawTachoDemo();
       requestAnimationFrame(tick);
     }
