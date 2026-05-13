@@ -925,7 +925,7 @@ if (pulseSensor.sawStartOfBeat()) {
             </div>
             <div class="demo-copy">
               <h3>Tachogram (IBI Over Time)</h3>
-              <p><span class="tag">Easy</span> The classic HRV view. Each bar is one heartbeat, the blue line shows the IBI trend, and the shaded band shows the most recent analysis window.</p>
+              <p><span class="tag">Easy</span> The classic HRV view. Each bar is one heartbeat. Variation up and down is HRV, literally visualized.</p>
               <p><strong>Data:</strong> Last 60 values from <code>getInterBeatIntervalMs()</code>.</p>
               <p><strong>Computation:</strong> RMSSD, SDNN, and pNN50 from the same buffer. When the bars go flatter vs. more rhythmic, customers get the concept quickly.</p>
             </div>
@@ -1310,19 +1310,6 @@ float calculateRmssd() {
       const max = compact ? 990 : 1000;
       const baseline = compact ? h * .5 : h * .52;
       const toY = value => h - ((value - min) / (max - min)) * h;
-
-      const mean = state.ibi.reduce((sum, value) => sum + value, 0) / state.ibi.length;
-      const meanY = toY(mean);
-
-      if (!compact) {
-        const windowStart = w * .68;
-        ctx.fillStyle = 'rgba(98, 216, 218, .08)';
-        ctx.fillRect(windowStart, 0, w - windowStart, h);
-        ctx.fillStyle = '#8fe9ea';
-        ctx.font = '700 16px ui-monospace, monospace';
-        ctx.fillText('analysis window', windowStart + 10, 28);
-      }
-
       ctx.strokeStyle = '#4a5663';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1330,20 +1317,13 @@ float calculateRmssd() {
       ctx.lineTo(w, baseline);
       ctx.stroke();
 
-      ctx.strokeStyle = '#f6f5ef';
-      ctx.lineWidth = compact ? 1 : 2;
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      ctx.moveTo(0, meanY);
-      ctx.lineTo(w, meanY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
+      const mean = state.ibi.reduce((sum, value) => sum + value, 0) / state.ibi.length;
+      const meanY = toY(mean);
       const barW = Math.max(3, w / state.ibi.length * .45);
       state.ibi.forEach((value, index) => {
         const x = (index + .5) / state.ibi.length * w;
         const y = toY(value);
-        ctx.strokeStyle = value >= mean ? '#e44f55' : '#ff8b70';
+        ctx.strokeStyle = '#e44f55';
         ctx.lineWidth = barW;
         ctx.beginPath();
         ctx.moveTo(x, meanY);
@@ -1351,35 +1331,12 @@ float calculateRmssd() {
         ctx.stroke();
       });
 
-      ctx.beginPath();
-      state.ibi.forEach((value, index) => {
-        const x = (index + .5) / state.ibi.length * w;
-        const y = toY(value);
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.strokeStyle = '#62d8da';
-      ctx.lineWidth = compact ? 2 : 4;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.stroke();
-
-      const last = state.ibi[state.ibi.length - 1];
-      const lastX = (state.ibi.length - .5) / state.ibi.length * w;
-      const lastY = toY(last);
-      ctx.fillStyle = '#ffd05b';
-      ctx.beginPath();
-      ctx.arc(lastX, lastY, compact ? 3 : 7, 0, Math.PI * 2);
-      ctx.fill();
-
       if (!compact) {
         ctx.fillStyle = '#f6f5ef';
         ctx.font = '700 19px ui-monospace, monospace';
         ctx.fillText('1000ms', 18, 42);
         ctx.fillText('850', 18, h * .54);
         ctx.fillText('700', 18, h - 28);
-        ctx.fillStyle = '#62d8da';
-        ctx.fillText('IBI trend', w - 126, h - 28);
       }
     }
 
