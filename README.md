@@ -65,7 +65,7 @@ That gives the customer a clear explanation for the moment between "I see a puls
 |-- index.html                         # Longer PulseSensor.com article mockup
 |-- firmware/
 |   `-- PulseSensor_CYD_Demo/
-|       `-- PulseSensor_CYD_Demo.ino    # Current CYD launcher sketch copy
+|       `-- PulseSensor_CYD_Demo.ino    # One-file Arduino sketch
 `-- docs/
     |-- animations/                    # GitHub-renderable GIF loops
     `-- screenshots/                   # PNG/SVG design captures
@@ -93,16 +93,26 @@ The key line for the article:
 - CYD backlight: `GPIO 21`
 - CYD RGB LED: red `GPIO 4`, green `GPIO 16`, blue `GPIO 17`
 
-The current firmware copy lives in [`firmware/PulseSensor_CYD_Demo/PulseSensor_CYD_Demo.ino`](firmware/PulseSensor_CYD_Demo/PulseSensor_CYD_Demo.ino).
+The current firmware lives in one beginner-readable Arduino file:
+[`firmware/PulseSensor_CYD_Demo/PulseSensor_CYD_Demo.ino`](firmware/PulseSensor_CYD_Demo/PulseSensor_CYD_Demo.ino).
+
+It includes:
+
+- CYD `TFT_eSPI` display setup defines
+- PulseSensor Playground setup
+- Live PPG waveform screen
+- Signal quality and 10-IBI BPM warm-up screen
+- Simple tachogram screen
+- Rear red LED beat flash
+- Auto-cycling display modes
 
 ## Flashing The Current CYD Launcher
 
 ```bash
-cd firmware/PulseSensor_CYD_Demo
-arduino-cli compile --fqbn esp32:esp32:esp32 PulseSensor_CYD_Demo.ino
+arduino-cli compile --fqbn esp32:esp32:esp32 firmware/PulseSensor_CYD_Demo
 ```
 
-The original local launcher also has a `flash-cyd.sh` helper with the CYD `TFT_eSPI` compile flags. That can be brought into this repo once the hardware project shape is finalized.
+Because the sketch includes the CYD `TFT_eSPI` setup defines, it does not require a separate `User_Setup.h` edit for this known display configuration.
 
 ## Visual Evolution
 
