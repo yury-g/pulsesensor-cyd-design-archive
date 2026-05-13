@@ -1409,82 +1409,86 @@ float calculateRmssd() {
       drawGrid(ctx, w, h, 80, 78);
 
       ctx.fillStyle = '#f6f5ef';
-      ctx.font = '800 18px ui-monospace, monospace';
-      ctx.fillText('candidate beats', 18, 30);
-      ctx.fillText('10-beat BPM window', 18, 164);
+      ctx.font = '800 16px ui-monospace, monospace';
+      ctx.fillText('candidate beats', 20, 28);
 
-      const startX = 20;
-      const eventY = 70;
-      const eventGap = 30;
-      state.qualityEvents.forEach((event, index) => {
+      const startX = 24;
+      const eventY = 68;
+      const visibleEvents = state.qualityEvents.slice(-12);
+      const eventGap = 27;
+      visibleEvents.forEach((event, index) => {
         const x = startX + index * eventGap;
         ctx.strokeStyle = event.qualified ? '#7bd98d' : '#e44f55';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(x, eventY - 24);
-        ctx.lineTo(x, eventY + 24);
+        ctx.moveTo(x, eventY - 20);
+        ctx.lineTo(x, eventY + 20);
         ctx.stroke();
         ctx.fillStyle = event.qualified ? '#7bd98d' : '#171819';
         ctx.strokeStyle = event.qualified ? '#7bd98d' : '#e44f55';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(x, eventY, 9, 0, Math.PI * 2);
+        ctx.arc(x, eventY, 8, 0, Math.PI * 2);
         event.qualified ? ctx.fill() : ctx.stroke();
       });
 
+      ctx.font = '800 14px ui-monospace, monospace';
       ctx.fillStyle = '#7bd98d';
       ctx.fillText('counted', 22, 116);
       ctx.fillStyle = '#e44f55';
-      ctx.fillText('rejected', 126, 116);
+      ctx.fillText('rejected', 116, 116);
       ctx.fillStyle = '#aeb4bd';
-      ctx.fillText(`R${state.rearmCount}`, w - 64, 116);
+      ctx.fillText(`rearm R${state.rearmCount}`, 232, 116);
 
-      const meterX = 342;
-      const meterY = 142;
+      const meterX = 430;
+      const meterY = 48;
       ctx.fillStyle = '#aeb4bd';
-      ctx.fillText('quality', meterX, 116);
+      ctx.fillText('quality 0-12', meterX, 28);
       for (let i = 0; i < 12; i++) {
-        const x = meterX + i * 20;
+        const x = meterX + i * 15;
         ctx.fillStyle = i < state.quality ? (i < 10 ? '#ffd05b' : '#62d8da') : '#303742';
-        ctx.fillRect(x, meterY, 13, 54);
+        ctx.fillRect(x, meterY, 10, 64);
       }
       ctx.strokeStyle = '#62d8da';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(meterX + 10 * 20 - 4, meterY - 7);
-      ctx.lineTo(meterX + 10 * 20 - 4, meterY + 64);
+      ctx.moveTo(meterX + 10 * 15 - 4, meterY - 6);
+      ctx.lineTo(meterX + 10 * 15 - 4, meterY + 74);
       ctx.stroke();
       ctx.fillStyle = '#62d8da';
-      ctx.font = '800 15px ui-monospace, monospace';
-      ctx.fillText('LOCK 10/12', meterX + 122, meterY - 10);
+      ctx.font = '800 13px ui-monospace, monospace';
+      ctx.fillText('lock', meterX + 132, meterY + 86);
 
       const slots = 10;
       const slotX = 24;
-      const slotY = 190;
-      const slotW = 43;
+      const slotY = 160;
+      const slotW = 40;
+      ctx.fillStyle = '#f6f5ef';
+      ctx.font = '800 16px ui-monospace, monospace';
+      ctx.fillText('10 qualified IBI readings for BPM', slotX, slotY - 18);
       for (let i = 0; i < slots; i++) {
-        const x = slotX + i * (slotW + 6);
+        const x = slotX + i * (slotW + 5);
         const filled = i < state.qualifiedIbis.length;
         ctx.fillStyle = filled ? '#252b32' : '#171819';
         ctx.strokeStyle = filled ? '#7bd98d' : '#4a5663';
         ctx.lineWidth = 2;
-        ctx.fillRect(x, slotY, slotW, 38);
-        ctx.strokeRect(x, slotY, slotW, 38);
+        ctx.fillRect(x, slotY, slotW, 34);
+        ctx.strokeRect(x, slotY, slotW, 34);
         ctx.fillStyle = filled ? '#f6f5ef' : '#6d7280';
-        ctx.font = '800 13px ui-monospace, monospace';
+        ctx.font = '800 12px ui-monospace, monospace';
         const label = filled ? String(Math.round(state.qualifiedIbis[i])) : '--';
-        ctx.fillText(label, x + 6, slotY + 24);
+        ctx.fillText(label, x + 5, slotY + 22);
       }
 
       const avgIbi = average(state.qualifiedIbis);
       const calcBpm = avgIbi ? Math.round(60000 / avgIbi) : 0;
       ctx.fillStyle = state.locked ? '#7bd98d' : '#ffd05b';
-      ctx.font = '900 22px ui-monospace, monospace';
+      ctx.font = '900 20px ui-monospace, monospace';
       const status = state.locked ? `LOCKED ${calcBpm} BPM` : `BUILDING ${state.qualifiedIbis.length}/10`;
-      ctx.fillText(status, 24, h - 24);
+      ctx.fillText(status, 24, h - 30);
       ctx.fillStyle = '#aeb4bd';
-      ctx.font = '800 14px ui-monospace, monospace';
-      ctx.fillText('BPM = 60000 / avg(last 10 qualified IBI)', 250, h - 24);
+      ctx.font = '800 13px ui-monospace, monospace';
+      ctx.fillText('BPM = 60000 / avg(10 IBI)', 314, h - 30);
     }
 
     function drawHeroPlots() {
