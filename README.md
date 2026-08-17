@@ -1,3 +1,5 @@
+> **Historical personal design archive — not current official documentation.** These experiments are preserved to show visual design evolution. They do not define current PulseSensor products, customer instructions, compatibility, safety policy, or support commitments. Use [PulseSensor.com](https://pulsesensor.com) and public [`WorldFamousElectronics`](https://github.com/WorldFamousElectronics) repositories for current company material.
+
 # PulseSensor CYD Real-Time Design Archive
 
 Visual experiments for a PulseSensor.com customer tutorial and ESP32 CYD project. The goal is to make PulseSensor Playground data feel immediate: raw PPG, detected beats, signal quality, BPM warm-up, and a simple tachogram.
